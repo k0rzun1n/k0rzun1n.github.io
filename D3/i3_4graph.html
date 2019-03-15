@@ -101,16 +101,12 @@ body{
 
     
     let prevLen = 0;
-    d3.interval(update, 3000);
+    
+    update();
+    d3.interval(update, 1000);
     function update() {
-        // console.log(d3.select("#qw").datum())
-            // .attr("transform", "translate(" + 0 + ",0)")
         d3.selectAll(".line").each(
             (d,i,n)=>{
-                // console.log(n[i])
-                // console.log(d)
-                // console.log(i)
-                // console.log(n)
                 d.push(random()/(10-i)+i*15)
                 d3.select(n[i]).attr("d", line)
             })
@@ -122,7 +118,7 @@ body{
 
         svg.select(".axis--x")
             .transition()
-            .duration(3000)
+            .duration(1000)
             .ease(d3.easeLinear)
             .tween("ti", ti)
             .call(tick);
@@ -131,10 +127,8 @@ body{
 
     function tick(s){
         s.call(d3.axisBottom(x))
-        // console.log(performance.now());
-        
-        
     }
+
     function ti(){
         return function(t){
             d3.selectAll(".line").each(

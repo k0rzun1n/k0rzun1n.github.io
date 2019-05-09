@@ -277,12 +277,12 @@ function init() {
     };
 
     var loader = new THREE.PCDLoader(); //modified loader for normals
-    // loader.load( './_logo/fatSPoisson0_G.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatSPoisson0_G2.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatPoisson64k_G.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatSPoisson0.pcd', function ( mesh ) {
-    // loader.load( './_logo/g4530_1_fillSeg_32kf.pcd ', function ( mesh ) {
-    loader.load( './_logo/g4530_1_fillSeg_32k.pcd ', function ( mesh ) {
+    // loader.load( './logo/fatSPoisson0_G.pcd', function ( mesh ) {
+    // loader.load( './logo/fatSPoisson0_G2.pcd', function ( mesh ) {
+    // loader.load( './logo/fatPoisson64k_G.pcd', function ( mesh ) {
+    // loader.load( './logo/fatSPoisson0.pcd', function ( mesh ) {
+    // loader.load( './logo/g4530_1_fillSeg_32kf.pcd ', function ( mesh ) {
+    loader.load( './logo/g4530_1_fillSeg_32k.pcd ', function ( mesh ) {
         // scene.add( mesh );
 
         let chGeo = mesh.geometry;
@@ -350,8 +350,8 @@ function init() {
     } );
     
     loader = new THREE.OBJLoader( manager );
-    // loader.load( '_logo/g4530_0.obj', function ( object ) {
-    loader.load( '_logo/g4530_1.obj', function ( object ) {
+    // loader.load( 'logo/g4530_0.obj', function ( object ) {
+    loader.load( 'logo/g4530_1.obj', function ( object ) {
 
         object.traverse( function ( child ) {
 
@@ -402,7 +402,7 @@ function init() {
                     depthWrite:true,
                     depthTest:true,
 					linewidth: 1.7131, // in pixels
-                    // map: new THREE.TextureLoader().load('./_logo/acrode_gradient.png '),                  
+                    // map: new THREE.TextureLoader().load('./logo/acrode_gradient.png '),                  
 					vertexColors: THREE.VertexColors,
 					// vertexColors: THREE.VertexColors,
 					//resolution:  // to be set by renderer, eventually

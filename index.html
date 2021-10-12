@@ -5,7 +5,7 @@
   <title>Sergey Korzunin portfolio</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <meta name="image" property="og:image" content="http://k0rzun1n.github.io/images/global.jpg" />
+  <meta name="image" property="og:image" content="images/BootstrapPortfolio/th.jpg" />
   <!-- <noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript> -->
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
     integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
@@ -23,6 +23,14 @@
 
 <body>
   <div id="main">
+
+    <div class="prjTile" id="BootstrapPortfolio">
+      <img src="images/BootstrapPortfolio/th.jpg" alt="" />
+      <div class="backdrop">
+        <h4 class="grid-title">Bootstrap Portfolio</h4>
+        <h6 class="grid-tags">[ Bootstrap, JavaScript, HTML, CSS ]</h6>
+      </div>
+    </div>
 
     <div class="prjTile" id="ThreeHidden">
       <img src="images/ThreeHidden/th.jpg" alt="" />
@@ -140,6 +148,22 @@
 
   </div>
 
+  <div class="modal fade" id="modal-BootstrapPortfolio" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">This portfolio</h5>
+        </div>
+        <div class="modal-body">
+          <img class="modal-img" src="images/BootstrapPortfolio/th.jpg" alt="" />
+          <p>Made with Bootstrap, JavaScript, HTML and CSS </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="modal fade" id="modal-ThreeHidden" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">

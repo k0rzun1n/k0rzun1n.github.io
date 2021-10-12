@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js webgl - lines - fat</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background-color: #000;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            color: #ffffff;
+            top: 0px;
+            width: 100%;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        a {
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="container"></div>
+
+    <script src="three.min.js"></script>
+    <script src="js/controls/OrbitControls.js"></script>
+    <script src="js/controls/TrackballControls.js"></script>
+
+    <script src="js/geometries/hilbert3D.js"></script>
+
+    <script src="js/Detector.js"></script>
+
+    <script src="js/libs/stats.min.js"></script>
+    <script src='js/libs/dat.gui.min.js'></script>
+
+    <script src='js/lines/LineSegmentsGeometry.js'></script>
+    <script src='js/lines/LineGeometry.js'></script>
+    <script src='js/lines/WireframeGeometry2.js'></script>
+
+    <script src='js/lines/LineMaterial.js'></script>
+    <!-- main -->
+    <script src='js/lines/LineMaterial2.js'></script>
+    <script src='js/lines/LinesNeighbourNormalsGeometry.js'></script>
+
+    <script src='js/lines/LineSegments2.js'></script>
+    <script src='js/lines/Line2.js'></script>
+    <script src='js/lines/Wireframe.js'></script>
+
+    <script src="js/loaders/TDSLoader.js"></script>
+    <script src="js/loaders/OBJLoader.js"></script>
+    <script id="post-vert" type="x-shader/x-vertex">
+        varying vec2 vUv;
+
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+    <script id="post-frag" type="x-shader/x-fragment">
+        #include <packing>
+
+        varying vec2 vUv;
+        uniform sampler2D tDiffuse;
+        uniform sampler2D tDepth;
+        uniform float cameraNear;
+        uniform float cameraFar;
+
+
+        float readDepth( sampler2D depthSampler, vec2 coord ) {
+            float fragCoordZ = texture2D( depthSampler, coord ).x;
+            float viewZ = perspectiveDepthToViewZ( fragCoordZ, cameraNear, cameraFar );
+            return viewZToOrthographicDepth( viewZ, cameraNear, cameraFar );
+        }
+
+        void main() {
+            // float depth = readDepth( tDepth, vUv );
+            // gl_FragColor.rgb = 1.0 - vec3( depth );
+            
+            gl_FragColor.rgb = texture2D( tDiffuse, vUv ).rgb;
+
+            gl_FragColor.a = 1.0;
+        }
+    </script>
+    <script id="post-frag-copy" type="x-shader/x-fragment">
+        #include <packing>
+
+        varying vec2 vUv;
+        uniform sampler2D tDepth;
+        uniform vec2 resolution;
+        vec2 hpx = vec2(1.)/resolution;
+
+        void main() {
+            gl_FragColor.rgb = texture2D( tDepth, vUv + 0.*hpx ).rrr;
+            // if(resolution.x > 1000.)gl_FragColor.r = 0.;
+            gl_FragColor.a = 1.0;
+        }
+    </script>
+    <script>
+
+        if (!Detector.webgl) Detector.addGetWebGLMessage();
+
+        var line, renderer, scene, camera, controls;
+        var target;
+        var target2;
+        var postScene, postCamera;
+        var copyScene;
+        var lineScene;
+        var line1;
+        var matLine, matLineBasic, matLineDashed;
+        var stats;
+        var gui;
+        var container;
+        var copyMaterial;
+
+        // viewport
+        var insetWidth;
+        var insetHeight;
+
+        init();
+
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+            // Create a multi render target with Float buffers
+            // target = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
+            target = new THREE.WebGLRenderTarget(window.innerWidth * 2, window.innerHeight * 2); //supersampling x2
+            target.texture.format = THREE.RGBFormat;
+            target.texture.minFilter = THREE.NearestFilter;
+            target.texture.magFilter = THREE.NearestFilter;
+            target.texture.generateMipmaps = false;
+            target.stencilBuffer = false;
+            target.depthBuffer = true;
+            target.depthTexture = new THREE.DepthTexture();
+            target.depthTexture.minFilter = THREE.NearestFilter;
+            target.depthTexture.magFilter = THREE.NearestFilter;
+            target.depthTexture.type = THREE.UnsignedShortType;
+            // somehow the options below don't change anything
+            // target.depthTexture.type = THREE.HalfFloatType;
+            // target.depthTexture.type = THREE.UnsignedByteType;
+            // target.depthTexture.type = THREE.UnsignedInt248Type;
+
+            //clone depth
+            target2 = new THREE.WebGLRenderTarget(window.innerWidth * 2, window.innerHeight * 2);
+            target2.texture.format = THREE.RGBFormat;
+            target2.texture.minFilter = THREE.NearestFilter;
+            target2.texture.magFilter = THREE.NearestFilter;
+            target2.texture.type = THREE.FloatType;
+            // target2.texture.type = THREE.UnsignedShortType;
+            // target2.texture.type = THREE.UnsignedByteType;
+            target2.texture.generateMipmaps = false;
+            target2.stencilBuffer = false;
+            target2.depthBuffer = false;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x333333, 1.0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            scene = new THREE.Scene();
+            var light = new THREE.DirectionalLight(0xffffff);
+            light.position.set(0, 70, -50).normalize();
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x444444));
+
+            var frustumSize = 120;
+            var aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.OrthographicCamera(frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 2000);
+            // camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 500);
+            camera.position.set(60, 60, -60);
+
+            // controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls = new THREE.TrackballControls(camera, renderer.domElement);
+            controls.minDistance = 1;
+            controls.maxDistance = 1000;
+            controls.target = new THREE.Vector3(0, 30, 0)
+            controls.noZoom = true;
+
+
+            var loader = new THREE.OBJLoader();
+            // loader.load('diesel_generator.obj', function (object) {
+            loader.load('cliba.obj', function (object) {
+                shMat = new THREE.MeshPhongMaterial({ color: 0x2194CE });
+                var geo;
+                object.traverse(function (child) {
+                    if (child instanceof THREE.Mesh) {
+                        child.material = shMat;
+                        geo = child.geometry;
+                    }
+                });
+                // object.rotateX(-Math.PI / 2);
+                scene.add(object);
+
+                var geometry = new THREE.LineNeighbourNormalsGeometry();
+                geometry.fromGeometry(geo)
+
+                colors = []
+                for (var i = 0; i < 30000; i++)
+                    colors.push(0., 1., 0.) 
+                geometry.setColors(colors)
+
+                matLine = new THREE.LineMaterial2({
+                    color: 0xffffff,
+                    linewidth: 4.5, // in pixels
+                    dashScale: 0.4,
+                    vertexColors: THREE.VertexColors,
+                    //resolution:  // to be set by renderer, eventually
+                    dashed: false,
+                    blending: THREE.NormalBlending,
+                    // depthTest: false,
+                    transparent: true,
+                    // tDepth: target.depthTexture
+                    tDepth: target2.texture
+                });
+                console.log(matLine.uniforms.tDepth)
+
+                line = new THREE.LineSegments2(geometry, matLine);
+                line.computeLineDistances();
+                setupPost();
+                setupCopy();
+
+                lineScene = new THREE.Scene();
+                lineScene.add(line);
+
+                window.addEventListener('resize', onWindowResize, false);
+                onWindowResize();
+
+                // stats = new Stats();
+                // document.body.appendChild(stats.dom);
+
+                container.addEventListener('mousewheel', onMWheel, false);
+
+                initGui();
+                animate();
+
+            });
+        }
+
+        function onMWheel(event) {
+            console.log("WHWWEEE")
+            camera.zoom += event.wheelDeltaY / 500;
+            camera.zoom = camera.zoom < 0.1 ? 0.1 : camera.zoom;
+            camera.updateProjectionMatrix()
+        }
+
+        function setupPost() {
+
+            // Setup post processing stage
+            postCamera = new THREE.OrthographicCamera(- 1, 1, 1, - 1, 0, 1);
+            var postMaterial = new THREE.ShaderMaterial({
+                vertexShader: document.querySelector('#post-vert').textContent.trim(),
+                fragmentShader: document.querySelector('#post-frag').textContent.trim(),
+                uniforms: {
+                    cameraNear: { value: camera.near },
+                    cameraFar: { value: camera.far },
+                    tDiffuse: { value: target.texture },
+                    // tDiffuse: { value: target.depthTexture },
+                    // tDiffuse: { value: target2.texture },
+                }
+            });
+            var postPlane = new THREE.PlaneBufferGeometry(2, 2);
+            var postQuad = new THREE.Mesh(postPlane, postMaterial);
+            postScene = new THREE.Scene();
+            postScene.add(postQuad);
+
+        }
+        
+        function setupCopy() {
+
+            copyMaterial = new THREE.ShaderMaterial({
+                vertexShader: document.querySelector('#post-vert').textContent.trim(),
+                fragmentShader: document.querySelector('#post-frag-copy').textContent.trim(),
+                resolution: new THREE.Vector2(1,1),
+                uniforms: {
+                    tDepth: { value: target.depthTexture },
+                    resolution: { value: new THREE.Vector2( 1, 1 ) }
+                }
+            });
+            var copyPlane = new THREE.PlaneBufferGeometry(2, 2);
+            var copyQuad = new THREE.Mesh(copyPlane, copyMaterial);
+            copyScene = new THREE.Scene();
+            copyScene.add(copyQuad);
+
+        }
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            // stats.update();
+            controls.update();
+            // renderer will set this eventually
+            matLine.resolution.set(window.innerWidth, window.innerHeight); // resolution of the viewport
+            copyMaterial.uniforms.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight); // resolution of the viewport
+
+            // renderer.render(scene, camera);
+            renderer.render(scene, camera, target);
+
+            renderer.render(copyScene, postCamera, target2);
+         
+            renderer.render(postScene, postCamera);
+            renderer.autoClearColor = false;
+            renderer.render(lineScene, camera);
+            renderer.autoClearColor = true;
+        }
+
+
+        function initGui() {
+
+            gui = new dat.GUI();
+
+            var param = {
+                'line type': 0,
+                'width (px)': 4.5,
+                'dash scale': 0.5,
+                'dash / gap': 1
+            };
+
+            gui.add(param, 'width (px)', 0.5, 30).onChange(function (val) {
+
+                matLine.linewidth = val;
+
+            });
+
+            gui.add(param, 'dash scale', 0.3, 2.5, 0.1).onChange(function (val) {
+                matLine.dashScale = val;
+            });
+
+            gui.add(param, 'dash / gap', { '2 : 1': 0, '1 : 1': 1, '1 : 2': 2 }).onChange(function (val) {
+
+                switch (val) {
+
+                    case '0':
+                        matLine.dashSize = 2;
+                        matLine.gapSize = 1;
+                        break;
+
+                    case '1':
+                        matLine.dashSize = 1;
+                        matLine.gapSize = 1;
+                        break;
+
+                    case '2':
+                        matLine.dashSize = 1;
+                        matLine.gapSize = 2;
+                        break;
+                }
+
+            });
+
+        }
+
+    </script>
+
+</body>
+
+</html>

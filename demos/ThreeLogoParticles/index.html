@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<title>three.js webgl - loaders - OBJ loader</title>
+		<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+				<style>
+					body {
+					font-family: Monospace;
+					background-color: #000;
+					color: #fff;
+					margin: 0px;
+					overflow: hidden;
+				}
+		
+	#info {
+						color: #fff;
+					position: absolute;
+					top: 10px;
+					width: 100%;
+					text-align: center;
+					z-index: 100;
+					display: block;
+				}
+		
+				#info a,
+	.button {
+						color: #f00;
+					font-weight: bold;
+					text-decoration: underline;
+					cursor: pointer
+				}
+</style>
+</head>
+
+				<body>
+					<script src="build/three.js"></script>
+            		<script src="js/loaders/PCDLoader.js"></script>
+					<script src="js/loaders/OBJLoader.js"></script>
+                    <script src="js/controls/OrbitControls.js"></script>
+                    <script src='js/lines/LineSegmentsGeometry.js'></script>
+                    <script src='js/lines/LineGeometry.js'></script>
+            		<script src='js/lines/LineMaterial.js'></script>
+                    <script src='js/lines/LineSegments2.js'></script>
+                    <script src='js/lines/Line2.js'></script>
+                    
+<script type="x-shader/x-vertex" id="vertexshader">
+	attribute float vertexID;
+	
+    uniform float size;
+	uniform float time;
+	uniform sampler2D noiseTex;
+	uniform vec3 mousePos;
+	varying vec3 vColor;
+
+    const float ts1 = 0.0001000; //timescale
+    const float ts2 = 0.0000130; //timescale
+    const float ts3 = 0.000010; //timescale
+	
+    float outQuad (float n) {return n *(2. - n);}
+    float rand (float s) {return fract(sin(s*1.5453123));} //
+    // const vec3 trisUp [16];
+    // const vec3 trisDn [17];
+    vec3 triDis(float tid){ //triangles displacement; 
+        const float flip = 0.57/2.05;
+        
+        if(tid == 0.)return vec3(0., 0., 0.);
+        if(tid == 1.)return vec3(2., 0., 0.);
+        if(tid == 2.)return vec3(-2., 0., 0.);
+        if(tid == 3.)return vec3(1.5, 1., 0.);
+        if(tid == 4.)return vec3(-1.5, 1., 0.);//
+        if(tid == 5.)return vec3(1., 2., 0.);
+        if(tid == 6.)return vec3(-1., 2., 0.);
+        if(tid == 7.)return vec3(0.5, 3., 0.);
+        if(tid == 8.)return vec3(-0.5, 3., 0.);
+        if(tid == 9.)return vec3(2.5, -1., 0.);
+        if(tid == 10.)return vec3(-2.5, -1., 0.);
+        if(tid == 11.)return vec3(-2., -2., 0.);
+        if(tid == 12.)return vec3(-1., -2., 0.);
+        if(tid == 13.)return vec3(0., -2., 0.);
+        if(tid == 14.)return vec3(1., -2., 0.);
+        if(tid == 15.)return vec3(2., -2., 0.);
+        //flip
+        if(tid == 16.)return vec3(-0.5, flip, 0.);
+        if(tid == 17.)return vec3(0.5, flip, 0.);
+        if(tid == 18.)return vec3(-1.5, flip, 0.);
+        if(tid == 19.)return vec3(1.5, flip, 0.);
+        if(tid == 20.)return vec3(-2., flip - 1., 0.);
+        if(tid == 21.)return vec3(2., flip - 1., 0.);
+        if(tid == 22.)return vec3(-2.5, flip - 2., 0.);
+        if(tid == 23.)return vec3(2.5, flip - 2., 0.);
+        if(tid == 24.)return vec3(-0.5, flip - 2., 0.);
+        if(tid == 25.)return vec3(0.5, flip - 2., 0.);
+        if(tid == 26.)return vec3(-1.5, flip - 2., 0.);
+        if(tid == 27.)return vec3(1.5, flip - 2., 0.);
+        if(tid == 28.)return vec3(-0.5, flip + 2., 0.);
+        if(tid == 29.)return vec3(0.5, flip + 2., 0.);
+        if(tid == 30.)return vec3(1., flip + 1., 0.);
+        if(tid == 31.)return vec3(-1., flip + 1., 0.);
+        if(tid == 32.)return vec3(0., flip + 3., 0.);
+    }
+	void main() {
+        //gets clipped when left lower corner is out of sight
+		vColor = color;
+		// vColor = vec3(1., 1., 0.);
+        //-5.95313 -3.50035
+        const float flowPtAmount = 4000.; //32k/2
+        float flowID = floor(vertexID/flowPtAmount);
+        // float flowID = 0.;
+        float flowT = fract(vertexID/flowPtAmount);
+        float stayTime = 2500. + 247.*flowID;
+        float transitionTime = 1600. + 221.*flowID;
+        float fullTime = stayTime + transitionTime;
+        float tPeriod = time / fullTime;
+        float tTID = floor(tPeriod); //0 1 2 3 ...
+        // float t = fract(tPeriod); //need to zero at stay
+        float t = clamp((flowT*stayTime/fullTime+fract(tPeriod) - stayTime/fullTime) / (transitionTime/fullTime) ,0.,1.); // [0,1] -0.25
+        float sst = smoothstep(0., 0.5, (0.5-abs(t-0.5)) ); //smoothed [0,1,0] ^
+        //rand 0 -> 1 ; 1 -> 2
+        float cTID = floor(33. * rand(tTID + 11.*flowID)); //current Trianle ID
+        float nTID = floor(33. * rand(tTID + 11.*flowID + 1.)); //next Triangle ID
+        const vec3 UpRight = vec3(2.36, 2.05, 0.);
+        // const vec3 flip = vec3(0.,0.57,0.);
+        const vec3 origin = vec3(-5.95313, -3.50035, 0.) ;//- flip;
+		vec4 mvPosition = modelViewMatrix * vec4(
+            // vec3(1., 1., 1.)*(
+            // vec3(1., -1., 1.)*(
+            vec3(
+                1.-sst,
+                (1.-sst)*((1.-t)*(cTID<16.?-1.:1.) + t*(nTID<16.?-1.:1.)),
+                1.-sst
+                )*(-origin + position)// middle triangle
+            + (1.-t)  * triDis(cTID)*UpRight
+            +     t   * triDis(nTID)*UpRight
+            // + vec3(0.,0.,3.)*t
+            // + vec3(0.,0.,17.)*(0.5-abs(t-0.5))
+            + vec3(0.,0.,(vertexID/4000.+0.66) * (mod(nTID, 2.) >= 1. ? -1.:1.) )*sst //slow, but smooth
+
+            // -2.5*right + flowID*right
+            // -2.*up +flip
+            
+            //+1.*vec3(0, flipDy, 0.) 
+            // +0.*vec3(2.36/2., 2.05, 0.) //up right, same dir
+
+            // +time*0.0003
+            + //sin(time*ts1)*
+            sst*1.3* //debug
+            10.*(0.5 - texture2D(noiseTex,time*ts2*vec2(-3., -1.1) 
+                                    +position.zz/3.+ position.xy/12.).rgb)
+            *clamp(-0.4 + 1.3*texture2D(noiseTex,time*ts3*vec2(+1.7, -1.3) 
+                                    +position.xy/36.).rgb, 0.,1.)
+            *(1.+77.*(1.-outQuad(min(1.,time / 3000.))))
+			//* max(0.2,5.5 - 0.85 * length(mousePos-position))
+
+            // + vec3(2., 0., 0.) * (position.z>0.?1.:0.) //z [-1. 1]
+            // + vec3(2., 0., 0.) * (position.y>-5.?1.:0.) //x,y [-6. 6]
+            // +         //// 
+			// vec3(0., 0., 0.5) 
+			// normal*0.13
+			// * max(0.,5.5-length(mousePos-position))
+			// + normal*max(0., 0.3 * (1. - time / 5000.) ) //can be done outside and eased there
+			// + vec3(0., 0., 0.01) * sin(position.x*40. + time * 0.0013)
+			, 1.0 );
+        // mvPosition.y *= -1.;
+		gl_PointSize = size * ( 80.0 / -mvPosition.z ) ;//* max(0., 0.5 + position.z/2. );
+		// gl_PointSize = size * ( 60.0 / -mvPosition.z )*max(0.,position.z );
+		// gl_PointSize = size * ( 60.0 / -mvPosition.z );
+		// gl_PointSize = 5.* ( 300.0 / -mvPosition.z );
+
+		gl_Position = projectionMatrix * mvPosition;
+
+	}
+</script>
+<script type="x-shader/x-fragment" id="fragmentshader">
+	uniform sampler2D texture;
+	varying vec3 vColor;
+	void main() {
+		gl_FragColor = vec4(vColor, 1.);
+		gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+	}
+</script>
+	<script>
+
+
+var container;
+
+// const cameraIsOrbit = false;
+const cameraIsOrbit = true;
+var raycaster, camera, scene, renderer;
+var cameraZ = 35;
+// var cameraZ = 15;
+
+var windowHalfX = window.innerWidth / 2;
+var windowHalfY = window.innerHeight / 2;
+
+let particlesShMat;
+let rayPlane;
+
+let INTERSECTED;
+let mouse = new THREE.Vector2();
+let mousePrev = new THREE.Vector2();
+let mouseShader = new THREE.Vector3();
+
+let controls;
+init();
+let timeStart = performance.now();
+animate();
+
+
+function init() {
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1500);
+    
+    if(cameraIsOrbit) controls = new THREE.OrbitControls(camera);
+    camera.position.z = cameraZ;
+
+    scene = new THREE.Scene();
+    let noiseTex = new THREE.TextureLoader().load('textures/perlin-512.png ');
+    noiseTex.wrapS = THREE.RepeatWrapping;
+    noiseTex.wrapT = THREE.RepeatWrapping;
+        
+    let uniforms = {
+        // texture: { value: new THREE.TextureLoader().load("textures/sprites/spark1.png") },
+        texture: { value: new THREE.TextureLoader().load('textures/sprites/disc.png') },
+        noiseTex: { value: noiseTex},
+        mousePos: { value: new THREE.Vector3(0, 0, 0) },
+        size: { value: 1.3 },
+        time: { value: 0.0 },
+    };
+
+    particlesShMat = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: document.getElementById('vertexshader').textContent,
+        fragmentShader: document.getElementById('fragmentshader').textContent,
+
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        transparent: true,
+        vertexColors: true
+    });
+
+    rayPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        new THREE.MeshBasicMaterial({ color: 0x3377bb, side: THREE.DoubleSide, wireframe: true }));
+    // scene.add(rayPlane);
+	// raycaster = new THREE.Raycaster();
+
+	var ambientLight = new THREE.AmbientLight(0xcccccc, 0.4);
+    scene.add(ambientLight);
+
+    var pointLight = new THREE.PointLight(0xffffff, 0.8);
+    camera.add(pointLight);
+    scene.add(camera);
+
+    // texture
+
+    var manager = new THREE.LoadingManager();
+    manager.onProgress = function (item, loaded, total) {
+
+        console.log(item, loaded, total);
+
+    };
+
+    var onProgress = function (xhr) {
+        if (xhr.lengthComputable) {
+            var percentComplete = xhr.loaded / xhr.total * 100;
+            console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+    };
+
+    var onError = function (xhr) {
+    };
+
+    var loader = new THREE.PCDLoader(); //modified loader for normals
+    // loader.load( './logo/fatSPoisson0_G.pcd', function ( mesh ) {
+    // loader.load( './logo/fatSPoisson0_G2.pcd', function ( mesh ) {
+    // loader.load( './logo/fatPoisson64k_G.pcd', function ( mesh ) {
+    // loader.load( './logo/fatSPoisson0.pcd', function ( mesh ) {
+    // loader.load( './logo/g4530_1_fillSeg_32kf.pcd ', function ( mesh ) {
+    loader.load( './logo/g4530_1_fillSeg_32k.pcd ', function ( mesh ) {
+        // scene.add( mesh );
+
+        let chGeo = mesh.geometry;
+        console.log("chGeo");
+        console.log(chGeo);
+        let origPosArr = chGeo.attributes.position.array;
+        let origNormArr = chGeo.attributes.normal.array;
+        let newPos = [];
+        let newNorm = [];
+        let newSize = [];
+        let newColor = []; //308 - 203 hsb
+        let vxID = [];
+        let mn = 100000, mx = -100000; //-0 0.019
+        console.log("Model particles amount " + origPosArr.length)
+        // for (let i = 0; i < origPosArr.length/5; i += 3) {
+        // for (let i = 0; i < origPosArr.length/2; i += 3) {
+        for (let i = 0; i < origPosArr.length; i += 3) {
+            const x =  1.* origPosArr[i + 0];
+            const z =  1.* origPosArr[i + 1];
+            const y =  -1.* origPosArr[i + 2];
+            const xn = origNormArr[i + 0];
+            const zn = origNormArr[i + 1];
+            const yn = origNormArr[i + 2];
+            let vv = y; mn = Math.min(mn, vv); mx = Math.max(mx, vv);
+
+            const hFrom = 308 / 360;
+            const hTo = 203 / 360;
+            
+            let minY = -5.629 , maxY = 7.472;
+            // let hCur = hFrom + (y - minY) / (maxY - minY) * (hTo - hFrom);
+            // let hCur = hFrom +  Math.random()*(hTo - hFrom);
+            // let hCur = hFrom +  Math.floor(((i/3)/4000))/4*(hTo - hFrom);
+            let hCur = hFrom +  Math.floor(((i/3)/4000))/8*(hTo - hFrom);
+            let col = hsvToRgb(
+                hCur
+                // 206/360
+                , 0.9, 0.9);
+            // console.log(hCur.toFixed(3));
+            // if (z >= 0.013) {
+            newPos.push(x, y, z);
+            // newPos.push(x, z, y);
+            newNorm.push(xn, yn, zn);
+            newColor.push(...col);
+            vxID.push(i/3);
+            // }
+        }
+        // console.log(vxID);
+        // console.log("mn=" + mn.toFixed(3) + " mx=" + mx.toFixed(3));
+        var newGeo = new THREE.BufferGeometry();
+        newGeo.addAttribute('position', new THREE.BufferAttribute(
+            new Float32Array(newPos), 3));
+        newGeo.addAttribute('normal', new THREE.BufferAttribute(
+            new Float32Array(newNorm), 3));
+        newGeo.addAttribute('color', new THREE.BufferAttribute(
+            new Float32Array(newColor), 3));
+        newGeo.addAttribute('vertexID', new THREE.BufferAttribute(
+            new Float32Array(vxID), 1));
+
+        var particles = new THREE.Points(newGeo, particlesShMat);
+        particles.frustumCulled = false; //
+        
+        scene.add(particles);
+
+
+    } );
+    
+    loader = new THREE.OBJLoader( manager );
+    // loader.load( 'logo/g4530_0.obj', function ( object ) {
+    loader.load( 'logo/g4530_1.obj', function ( object ) {
+
+        object.traverse( function ( child ) {
+
+            if ( child instanceof THREE.Mesh ) {
+                object.rotation.x = Math.PI/2;
+
+
+                let edges = new THREE.EdgesGeometry( child.geometry, 1  );
+                var geometry = new THREE.LineSegmentsGeometry();
+                let pos = [];
+                let colors = [];
+                let mn = 100000, mx = -100000; //-0 0.019                
+                 for (let id = 0; id < edges.attributes.position.array.length; id+=3) {
+                    const x =  1.*edges.attributes.position.array[id+0];
+                    const z =  1.*edges.attributes.position.array[id+1];
+                    const y = -1.*edges.attributes.position.array[id+2];
+                    // colors.push(1,(y-2)/4,0);
+                    pos.push(x,y,z);
+
+
+                    let vv = y; mn = Math.min(mn, vv); mx = Math.max(mx, vv);
+
+                    const hFrom = 308 / 360;
+                    const hTo = 203 / 360;
+					
+                    let minY = -4.904 , maxY = 7.492;
+                    let hCur = hFrom + (y - minY) / (maxY - minY) * (hTo - hFrom);
+                    let col = hsvToRgb(
+                        hCur
+                        // 206/360
+                        , 0.9, 0.9);
+                    // console.log(hCur.toFixed(3));
+                    // if (z >= 0.013) {
+                    // newPos.push(x, y, z);
+                    // newNorm.push(xn, yn, zn);
+                    colors.push(...col);
+
+                }
+                console.log("mn=" + mn.toFixed(3) + " mx=" + mx.toFixed(3));
+                
+                // console.log(pos);
+				geometry.setPositions( pos );
+				geometry.setColors( colors );
+                
+                matLine = new THREE.LineMaterial( {
+					// color: 0x44aaff,
+					// color: 0xffffff,
+                    depthWrite:true,
+                    depthTest:true,
+					linewidth: 1.7131, // in pixels
+                    // map: new THREE.TextureLoader().load('./logo/acrode_gradient.png '),                  
+					vertexColors: THREE.VertexColors,
+					// vertexColors: THREE.VertexColors,
+					//resolution:  // to be set by renderer, eventually
+					dashed: false
+				} );
+
+                let line = new THREE.Line2( geometry, matLine );
+                // line.material.depthTest = false;
+                line.material.opacity = 1.;
+                line.material.transparent = false;
+                line.material.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+                // line.position.x = - 4;
+                // let sc = 1.5;
+                // line.scale.set(sc,sc,sc);
+                line.scale.z = 0.5;
+                scene.add(line);
+                //////////////////////
+                
+
+
+                // child.material.map = texture;
+            }
+
+        } );
+
+    }, onProgress, onError );
+
+    
+    // LogoParticles_decPlanar.obj 
+    //
+
+    renderer = new THREE.WebGLRenderer();
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+    //
+
+    window.addEventListener('resize', onWindowResize, false);
+
+}
+
+function hsvToRgb(h, s, v) {
+    var r, g, b;
+
+    var i = Math.floor(h * 6);
+    var f = h * 6 - i;
+    var p = v * (1 - s);
+    var q = v * (1 - f * s);
+    var t = v * (1 - (1 - f) * s);
+
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+
+    // return [ r * 255, g * 255, b * 255 ];
+    return [r, g, b];
+}
+
+function onWindowResize() {
+
+    windowHalfX = window.innerWidth / 2;
+    windowHalfY = window.innerHeight / 2;
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+}
+
+function onDocumentMouseMove(event) {
+	event.preventDefault();
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+	// console.log(mouse);
+}
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    particlesShMat.uniforms.time.value = performance.now() - timeStart;
+    // controls.update();
+    //// drive-by
+    // camera.position.set(-50+0.005*particlesShMat.uniforms.time.value,cp.y,cp.z);
+    if(!cameraIsOrbit){
+        const camMouseScale = 33.; //21
+        let t = 0.033;
+        let curCamPos = camera.position;
+        let cpz = cameraZ*0.5 + camMouseScale * (1 - mouse.length());
+        camera.position.set(curCamPos.x*(1-t) + t*camMouseScale*mouse.x,
+                            curCamPos.y*(1-t) + t*camMouseScale*mouse.y,
+                            curCamPos.z*(1-t) + t*cpz);
+        camera.lookAt(0,0,0);
+    }
+    // find intersections
+    // raycaster.setFromCamera(mouse, camera);
+    // var intersects = raycaster.intersectObjects([rayPlane]);
+    // if (intersects.length > 0) {
+	// 	// console.log(intersects[0].point);
+	// 	mouseShader = mouseShader.lerp(intersects[0].point, 0.025);
+	// 	particlesShMat.uniforms.mousePos.value = mouseShader;
+    //     // if (INTERSECTED != intersects[0].object) {
+    //         // INTERSECTED = intersects[0].object;
+    //     // }
+    // } else {
+    //     // INTERSECTED = null;
+    // }
+
+	render();
+}
+
+function render() {
+
+    // camera.position.x += ( mouseX - camera.position.x ) * .05;
+    // camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+    // camera.lookAt( scene.position );
+
+    renderer.render(scene, camera);
+
+}
+
+
+	</script>
+	</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .line {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 1.5px;
+    }
+
+    body {
+        color: white;
+        font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+        font-weight: bold;
+        background: black;
+    }
+</style>
+<svg width="640" height="480"></svg>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script>
+
+    var n = 15,
+        rng = d3.randomNormal(30, 11),
+        data1 = [],//d3.range(n).map(rng),
+        data2 = [],//d3.range(n).map(rng),
+        data3 = [],//d3.range(n).map(rng),
+        data4 = [];//d3.range(n).map(rng);
+
+    var svg = d3.select("svg"),
+        margin = { top: 20, right: 20, bottom: 20, left: 40 },
+        width = +svg.attr("width") - margin.left - margin.right,
+        height = +svg.attr("height") - margin.top - margin.bottom,
+        g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var x = d3.scaleLinear()
+        .domain([0, 1])
+        .range([0, width])
+    // var x = d3.scalePoint()
+    //     .rangeRound([0, width])
+    //     .padding(0.5);
+
+    var y = d3.scaleLinear()
+        .domain([0, 60])
+        .range([height, 0]);
+
+    console.log(y)
+    console.log(y(0))
+    console.log(height)
+    var line = d3.line()
+        .x(function (d, i) { return x(i); })
+        .y(function (d, i) { return y(d); });
+
+    g.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    g.append("g")
+        .attr("class", "axis axis--x")
+        .attr("transform", "translate(0," + y(0) + ")")
+        .call(d3.axisBottom(x))
+
+    g.append("g")
+        .attr("class", "axis axis--y")
+        .call(d3.axisLeft(y));
+
+    g.append("g")
+        .attr("clip-path", "url(#clip)")
+        .append("path")
+        .datum(data1)
+        .attr("class", "line")
+        .attr("id", "qw")
+        .style("stroke", "rgb(255,0,0)")
+        .style("stroke-width", "2")
+
+    g.append("g")
+        .attr("clip-path", "url(#clip)")
+        .append("path")
+        .datum(data2)
+        .attr("class", "line")
+        .style("stroke", "rgb(0,255,0)")
+        .style("stroke-width", "2")
+
+    g.append("g")
+        .attr("clip-path", "url(#clip)")
+        .append("path")
+        .datum(data3)
+        .attr("class", "line")
+        .style("stroke", "rgb(0,0,255)")
+        .style("stroke-width", "2")
+
+    g.append("g")
+        .attr("clip-path", "url(#clip)")
+        .append("path")
+        .datum(data4)
+        .attr("class", "line")
+        .style("stroke", "rgb(222,222,0)")
+        .style("stroke-width", "2")
+
+
+    let prevLen = 0;
+    let maxVal = 60;
+    let maxValPrev = maxVal;
+
+    update();
+    d3.interval(update, 1000);
+    function update() {
+        maxValPrev = maxVal;
+        d3.selectAll(".line").each(
+            (d, i, n) => {
+                let nextVal = rng() / (10 - i) + i * 15
+                nextVal += (2 - i / 5) + (prevLen / 50) ** (3 - i / 5);
+                // console.log(nextVal)
+                maxVal = Math.max(maxVal, nextVal);
+                d.push(nextVal)
+                d3.select(n[i]).attr("d", line)
+            })
+
+        prevLen += 1;
+
+
+        y.domain([0, maxVal]);
+        x.domain([0, prevLen]);
+        // x.rangeRound([0, prevLen]);
+
+        svg.select(".axis--x")
+            .transition()
+            .duration(1000)
+            .ease(d3.easeLinear)
+            .tween("ti", ti)
+            .call((s) => s.call(d3.axisBottom(x)));
+
+        svg.select(".axis--y")
+            .transition()
+            .duration(1000)
+            .ease(d3.easeLinear)
+            .call((s) => s.call(d3.axisLeft(y)));
+
+    }
+
+    function ti() {
+        return function (t) {
+            d3.selectAll(".line").each(
+                (d, i, n) => {
+                    let mvDelta = maxVal - maxValPrev;
+                    d3.select(n[i])
+                        .attr("transform",
+                            //order
+                            // "scale(" + (1 - t / prevLen) + ","+1+")" 
+                            "translate(0," + (mvDelta * t / maxVal) * y(0) + ")"
+                            + "," +
+                            "scale(" + (1 - t / prevLen) + "," + (1 - mvDelta * t / maxVal) + ")"
+                            // + ",translate(0," + (1-0.19)*y(0) + ")"
+                        )
+                })
+        };
+    }
+
+
+</script>

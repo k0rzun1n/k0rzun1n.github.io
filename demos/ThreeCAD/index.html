@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>k0rzun1n CAD shader</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<style>
+		body {
+			font-family: Monospace;
+			background-color: #000;
+			color: #fff;
+			margin: 0px;
+			overflow: hidden;
+		}
+
+		#info {
+			color: #fff;
+			position: absolute;
+			top: 10px;
+			width: 100%;
+			text-align: center;
+			z-index: 100;
+			display: block;
+		}
+
+		#info a,
+		.button {
+			color: #f00;
+			font-weight: bold;
+			text-decoration: underline;
+			cursor: pointer
+		}
+	</style>
+	<script id="vertex-shader" type="x-shader/x-vertex">
+		varying vec3 v_eyespace_normal;
+		varying vec3 v_eyespace_position;
+
+		void main(void)
+		{
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+			vec4 p = modelViewMatrix * vec4( position, 1.0 );
+			v_eyespace_position = p.xyz/p.w ;
+			v_eyespace_normal = normalize(normalMatrix * normal);
+		}
+	</script>
+	<script id="fragment-shader" type="x-shader/x-fragment">
+		vec3  M_ambient = vec3(0.1);
+		vec3  M_diffuse = vec3(1.);
+		vec3  M_specular = vec3(1);
+		vec3  M_emissive = vec3(0.1);
+		float M_shininess = 10000.;
+		float M_alpha = 1.;
+
+		vec3 L_diffuse =   vec3(1.0, 1.0, 1.0);
+		vec3 L_ambient =   vec3(0.8, 0.8, 0.8);
+		vec3 L_specular =  vec3(0.8, 0.8, 0.8);
+		vec3 L_direction = vec3(0.0, -0.5,-0.5);
+		// vec3 L_direction = vec3(.0, -0.5,1.);
+
+		uniform float u_highlight;
+		float u_alpha = 1.;
+		
+		varying vec3 v_eyespace_normal;
+		varying vec3 v_eyespace_position;
+
+		///// ADJUSTABLE /////
+		#define BLACK_EDGE_EMISSIVE   //multiply ambient and emissive with dark edge
+		// #define ENABLE_SPECULAR
+		const float diffuseLevels = 3.;
+		const float edgeLevels = 2.;
+		const float edgeScale = 2.; //increase for shorter dark edge
+		// (0,1] transition width, from sharpest to the most smooth
+		const float dT = 0.25; //diffuseTransitionLength
+		const float eT = 0.25; //edgeTransitionLength		
+		const vec3 HCOLOR = vec3(1.0,0.75,0.2); //highlight color
+		////////////////////////
+
+		const float SCREEN_GAMMA = 2.2;
+		vec3 cgamma (vec3 c) { return pow(c, vec3(1.0/SCREEN_GAMMA));}
+		float dlw = 1./diffuseLevels; //diffuseLevelWidth
+		float elw = 1./edgeLevels; //edgeLevelWidth
+		
+		void main(void)
+		{
+			vec3 N = v_eyespace_normal;
+			vec3 E = normalize(-v_eyespace_position);
+			vec3 L = normalize(-L_direction);   
+			vec3 R = normalize(-reflect(L,N));  
+
+			///// AMBIENT
+			vec3 ambient =  L_ambient * M_ambient;  
+			
+			///// EMISSIVE
+			vec3 emissive = M_emissive;
+			
+			///// DIFFUSE
+			float diffuse_factor =  max(dot(N,L), 0.0);
+			float modD = mod(min(1., max(0., diffuse_factor)), dlw);
+			diffuse_factor = floor(diffuse_factor * diffuseLevels) / diffuseLevels;
+			modD -= (1.-dT)*dlw;
+			modD = max(0.,modD);
+			modD *= 1./dT;
+			diffuse_factor += modD;	
+			//diffuse_factor = pow(diffuse_factor+0.1,5.); //uncomment this for "metallic" look
+			diffuse_factor  /= 10.;  //scale down the diffuse transitions
+			diffuse_factor  += 0.6;  //make them brighter after scaling
+			vec3 diffuse =  L_diffuse * M_diffuse * diffuse_factor;
+			
+			///// EDGE
+			float edge = max(0.,min(1.,floor(edgeScale * edgeLevels * N.z) / edgeLevels)) ;
+			float modE = mod(min(1., max(0., edgeScale*N.z)), elw);
+			modE -= (1.-eT)*elw;
+			modE = max(0.,modE);
+			modE *= 1./eT;
+			edge += modE;			
+			edge /= 3.;
+			edge += 0.28;
+
+			///// SPECULAR
+			vec3 specular =  vec3(0.0);
+			#ifdef ENABLE_SPECULAR
+				if(diffuse_factor>0.0){
+					vec3 H = normalize(L + E);
+					float specular_factor = pow(max(dot(N,H), 0.0), M_shininess);
+					specular_factor = step(0.001,specular_factor);
+					specular = L_specular * M_specular  * specular_factor;
+				}
+			#endif
+
+			#ifdef BLACK_EDGE_EMISSIVE
+				vec3 final_color = edge * (specular + diffuse + emissive + ambient);
+			#else
+				vec3 final_color = edge * (specular + diffuse) + emissive + ambient;
+			#endif
+			final_color = cgamma(mix(final_color, HCOLOR, u_highlight));
+			gl_FragColor = vec4(final_color,M_alpha * u_alpha); 
+		}
+	</script>
+</head>
+
+<body>
+	<div id="info">
+		<font color="red">k0rzun1n</font> CAD shader
+	</div>
+
+	<script src="three.min.js"></script>
+	<script src="OrbitControls.js"></script>
+	<script src="TrackballControls.js"></script>
+	<script src="TDSLoader.js"></script>
+	<script src="OBJLoader.js"></script>
+
+	<script>
+
+		var container, controls;
+		var camera, scene, renderer;
+		var shMat;
+		var frustumSize = 4;
+		var aspect = window.innerWidth / window.innerHeight;
+			
+		init();
+		animate();
+
+		document.addEventListener("keydown", onDocumentKeyDown, false);
+		
+		function init() {
+
+			container = document.createElement('div');
+			document.body.appendChild(container);
+
+			camera = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 2000 );
+			// camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.5, 200);
+			// camera.position.z = 70;
+			camera.position.y = 2;
+			camera.position.x = 8;
+			
+			// controls = new THREE.OrbitControls(camera);
+			controls = new THREE.TrackballControls(camera);
+			controls.target = new THREE.Vector3(0, 1, 0);
+			controls.noZoom = true;
+			// controls.rotateSpeed = 0.2;
+
+			scene = new THREE.Scene();
+			scene.add(new THREE.HemisphereLight());
+
+			var directionalLight = new THREE.DirectionalLight(0xffeedd);
+			directionalLight.position.set(0, 3, 2);
+			scene.add(directionalLight);
+
+			//3ds files dont store normal maps
+			// var loader = new THREE.TextureLoader();
+			// var normal = loader.load('portalgun/textures/normal.jpg');
+
+			// var loader = new THREE.TDSLoader();
+			// loader.setPath('portalgun/textures/');
+			// loader.load( 'portalgun/portalgun.3ds', function ( object ) {
+
+			// loader.load('mylathe.3ds', function (object) {
+
+			var loader = new THREE.OBJLoader();
+			loader.load('diesel_generator.obj', function (object) {
+
+				shMat = new THREE.ShaderMaterial({
+					vertexShader: document.getElementById('vertex-shader').textContent,
+					fragmentShader: document.getElementById('fragment-shader').textContent,
+					uniforms: 
+					{u_highlight: {value: 0.}}
+					// depthWrite: false,
+					// depthTest: false
+				})
+				object.traverse(function (child) {
+
+					if (child instanceof THREE.Mesh) {
+
+						child.material = shMat;
+					}
+
+				});
+				// object.rotateX(-Math.PI / 2);
+				scene.add(object);
+
+			});
+
+
+
+			renderer = new THREE.WebGLRenderer();
+			renderer.setClearColor(0x002222, 1);
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+
+			container.addEventListener('resize', resize, false);
+			container.addEventListener('mousewheel', onMWheel, false);
+
+
+		}
+		function onMWheel(event){
+			camera.zoom += event.wheelDeltaY/500;
+			camera.zoom = camera.zoom < 0.1 ? 0.1 : camera.zoom;
+			camera.updateProjectionMatrix()
+		}
+		function onDocumentKeyDown(event) {
+			var keyCode = event.which;
+			if(keyCode == 81){
+				shMat.uniforms.u_highlight.value -= 0.05
+			}else if(keyCode == 87){
+				shMat.uniforms.u_highlight.value += 0.05
+			}else if(keyCode == 65){
+				shMat.uniforms.u_highlight.value = 0.0
+			}
+			console.log(shMat.uniforms.u_highlight.value)
+		};	
+		function resize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+
+		function animate() {
+
+			controls.update();
+			renderer.render(scene, camera);
+
+			requestAnimationFrame(animate);
+
+		}
+	</script>
+
+</body>
+
+</html>

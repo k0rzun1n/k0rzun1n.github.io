@@ -31,7 +31,6 @@
         <h6 class="grid-tags">[ Bootstrap, JavaScript, HTML, CSS ]</h6>
       </div>
     </div>
-
     <div class="prjTile" id="ThreeHidden">
       <img src="images/ThreeHidden/th.jpg" alt="" />
       <div class="backdrop">
@@ -50,6 +49,13 @@
       <img src="images/ThreeLogoParticles/th.jpg" alt="" />
       <div class="backdrop">
         <h4 class="grid-title">Interactive particles logo</h4>
+        <h6 class="grid-tags">[ Three.js ]</h6>
+      </div>
+    </div>
+    <div class="prjTile" id="ThreeTREXParticles">
+      <img src="images/ThreeTREXParticles/th2.jpg" alt="" />
+      <div class="backdrop">
+        <h4 class="grid-title">Interactive particles T-Rex</h4>
         <h6 class="grid-tags">[ Three.js ]</h6>
       </div>
     </div>
@@ -117,10 +123,10 @@
         <h6 class="grid-tags">[ Unity, AR ]</h6>
       </div>
     </div>
-    <div class="prjTile" id="UnityLootboxWeb">
-      <img src="images/UnityLootboxWeb/th.jpg" alt="" />
+    <div class="prjTile" id="UnityLootboxClicker">
+      <img src="images/UnityLootboxClicker/th.jpg" alt="" />
       <div class="backdrop">
-        <h4 class="grid-title">Web clicker game</h4>
+        <h4 class="grid-title">LootBox clicker game</h4>
         <h6 class="grid-tags">[ Unity, Blender ]</h6>
       </div>
     </div>
@@ -152,11 +158,30 @@
         <h6 class="grid-tags">[ Android, JNI, lodepng ]</h6>
       </div>
     </div>
-  
+    <div class="prjTile" id="Contacts">
+      <p>Contacts</p>
+    </div>
+
   </div>
 
   <!-- MODALS -->
-  
+  <div class="modal fade" id="modal-Contacts" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Contacts</h5>
+        </div>
+        <div class="modal-body">
+          <img class="modal-img" src="images/Contacts/th.jpg" alt="" />
+          <p>Mail: <a href="mailto:korzunin335@gmail.com">korzunin335@gmail.com</a></p>
+          <p>Telegram: <a href="https://t.me/k0rzun1n">k0rzun1n</a></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="modal fade" id="modal-BootstrapPortfolio" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -222,6 +247,25 @@
           <br />
           <a href="./demos/ThreeLogoParticles/1_0.html">Live demo</a>
           <p> Logo image converted to a 3d mesh in Blender, then to a point cloud in http://www.meshlabjs.net/ and
+            animated with Three.js</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="modal-ThreeTREXParticles" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Interactive particles logo</h5>
+        </div>
+        <div class="modal-body">
+          <img class="modal-img" src="images/ThreeTREXParticles/th2.jpg" alt="" />
+          <br />
+          <a href="./demos/ThreeLogoParticles/index_trexWorks.html">Live demo</a>
+          <p> T-Rex model converted to a point cloud in http://www.meshlabjs.net/ and
             animated with Three.js</p>
         </div>
         <div class="modal-footer">
@@ -366,8 +410,7 @@
           <img class="modal-img" src="images/AndroidHexLife/th.jpg" alt="" />
 
           <p>Simple app to test Game of Life on a pseudoinfinite hexagonal grid.</p>
-          <a
-            href="https://github.com/k0rzun1n/HexLife-android-gles3">https://github.com/k0rzun1n/HexLife-android-gles3</a>
+          <a href="https://github.com/k0rzun1n/HexLife-android-gles3">https://github.com/k0rzun1n/HexLife-android-gles3</a>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -375,15 +418,18 @@
       </div>
     </div>
   </div>
-  <div class="modal fade" id="modal-UnityLootboxWeb" tabindex="-1">
+  <div class="modal fade" id="modal-UnityLootboxClicker" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Unity LootBox clicker game</h5>
         </div>
         <div class="modal-body">
-          <img class="modal-img" src="images/UnityLootboxWeb/th.jpg" alt="" />
+          <img class="modal-img" src="images/UnityLootboxClicker/th.jpg" alt="" />
+          <a href="https://www.dropbox.com/s/7p4qq9yypc9bx2i/LootBox_win_build.rar?dl=0">
+            Windows Build</a>
           <p>Unity LootBox clicker game</p>
+          Created for a research on how much visual and audio effects can influence human behaviour.
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -455,7 +501,8 @@
         </div>
         <div class="modal-body">
           <img class="modal-img" src="images/PlaycanvasShooter/th.jpg" alt="" />
-          <a href="https://playcanvas.com/project/834588/overview/tt_faraway">Live demo</a> <i>(open "Editor", choose the first scene and press the Launch button inside)</i>
+          <a href="https://playcanvas.com/project/834588/overview/tt_faraway">Live demo</a> <i>(open "Editor", choose
+            the first scene and press the Launch button inside)</i>
           <p></p>
           <p> Added a bunch of features to a raw First Person Shooter template:</p>
           <ul>
@@ -468,7 +515,8 @@
             <li>Enemy respawn and a score increment if they fall off the level.</li>
             <li>Player respawn if they fall off the level.</li>
             <li>A platform that throws the player Unreal Tournament style.</li>
-            <li>Changed shooting from pistol mode (mouse click), to automatic (mouse down), so bullet is shot every 50ms while mouse is down.</li>
+            <li>Changed shooting from pistol mode (mouse click), to automatic (mouse down), so bullet is shot every 50ms
+              while mouse is down.</li>
           </ul>
 
         </div>

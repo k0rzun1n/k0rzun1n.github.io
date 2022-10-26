@@ -73,7 +73,7 @@
             *clamp(-0.4 + 1.3*texture2D(noiseTex,time*ts3*vec2(+1.7, -1.3) 
                                     +position.xy/36.).rgb, 0.,1.)
             *(1.+77.*(1.-outQuad(min(1.,time / 3000.))))
-			* max(0.2,5.5 - 0.85 * length(mousePos-position))
+			* max(0.3,5.5 - 0.85 * length(mousePos-position))
 
             // + vec3(2., 0., 0.) * (position.z>0.?1.:0.) //z [-1. 1]
             // + vec3(2., 0., 0.) * (position.y>-5.?1.:0.) //x,y [-6. 6]
@@ -147,7 +147,7 @@ function init() {
         texture: { value: new THREE.TextureLoader().load('textures/sprites/disc.png') },
         noiseTex: { value: noiseTex},
         mousePos: { value: new THREE.Vector3(0, 0, 0) },
-        size: { value: 2.0 },
+        size: { value: 2.2 },
         time: { value: 0.0 },
     };
 
@@ -195,14 +195,9 @@ function init() {
     };
 
     var loader = new THREE.PCDLoader(); //modified loader for normals
-    // loader.load( './_logo/fatSPoisson0_G.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatSPoisson0_G2.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatPoisson64k_G.pcd', function ( mesh ) {
     loader.load( './models/trex/trex77k_G.pcd', function ( mesh ) {
-    // loader.load( './_logo/fatSPoisson0.pcd', function ( mesh ) {
 
         // scene.add( mesh );
-
         let chGeo = mesh.geometry;
         console.log("chGeo");
         console.log(chGeo);
@@ -213,6 +208,10 @@ function init() {
         let newSize = [];
         let newColor = []; //308 - 203 hsb
         let mn = 100000, mx = -100000; //-0 0.019
+        
+        const hFrom = 0.5;
+        const hTo = 1.15;
+
         for (let i = 0; i < origPosArr.length; i += 3) {
             const sc = 1.6;
             const z =  sc* origPosArr[i + 0];
@@ -223,24 +222,18 @@ function init() {
             const zn = origNormArr[i + 2];
             let vv = y; mn = Math.min(mn, vv); mx = Math.max(mx, vv);
 
-            const hFrom = 308 / 360;
-            const hTo = 203 / 360;
-            
             let minY = -5.629 , maxY = 7.472;
             let hCur = hFrom + (y - minY) / (maxY - minY) * (hTo - hFrom);
+            hCur = Math.abs(hCur);
             let col = hsvToRgb(
                 hCur
-                // 206/360
-                , 0.9, 0.9);
-            // console.log(hCur.toFixed(3));
+                , 0.8, 0.8);
             // if (z >= 0.013) {
             newPos.push(x, y, z);
-            // newPos.push(x, z, y);
             newNorm.push(xn, yn, zn);
             newColor.push(...col);
             // }
         }
-        // console.log("mn=" + mn.toFixed(3) + " mx=" + mx.toFixed(3));
         var newGeo = new THREE.BufferGeometry();
         newGeo.addAttribute('position', new THREE.BufferAttribute(
             new Float32Array(newPos), 3));
@@ -255,129 +248,12 @@ function init() {
 
     } );
 
-    var loader = new THREE.OBJLoader(manager);
-    // loader.load('lpstl_poissonds.obj', function (object) {
-    // loader.load('_logo/pds_fl0.obj', function (object) {
-        loader.load('_logo/vps_f_0.obj', function (object) {
-        object.traverse(function (child) {
-
-            if (child instanceof THREE.Mesh) {
-                let chGeo = child.geometry;
-                let origPosArr = chGeo.attributes.position.array;
-                let origNormArr = chGeo.attributes.normal.array;
-                let newPos = [];
-                let newNorm = [];
-                let newSize = [];
-                let newColor = []; //308 - 203 hsb
-                let mn = 100000, mx = -100000; //-0 0.019
-                for (let i = 0; i < origPosArr.length; i += 3) {
-                    const x =  1.* origPosArr[i + 0];
-                    const z =  1.* origPosArr[i + 1];
-                    const y = -1.* origPosArr[i + 2];
-                    const xn = origNormArr[i + 0];
-                    const zn = origNormArr[i + 1];
-                    const yn = origNormArr[i + 2];
-                    let vv = y; mn = Math.min(mn, vv); mx = Math.max(mx, vv);
-
-                    const hFrom = 308 / 360;
-                    const hTo = 203 / 360;
-					
-                    let minY = -5.629 , maxY = 7.472;
-                    let hCur = hFrom + (y - minY) / (maxY - minY) * (hTo - hFrom);
-                    let col = hsvToRgb(
-                        hCur
-                        // 206/360
-                        , 0.9, 0.9);
-                    // console.log(hCur.toFixed(3));
-                    // if (z >= 0.013) {
-                    newPos.push(x, y, z);
-                    // newPos.push(x, z, y);
-                    newNorm.push(xn, yn, zn);
-                    newColor.push(...col);
-                    // }
-                }
-                console.log("mn=" + mn.toFixed(3) + " mx=" + mx.toFixed(3));
-                var newGeo = new THREE.BufferGeometry();
-                newGeo.addAttribute('position', new THREE.BufferAttribute(
-                    new Float32Array(newPos), 3));
-                newGeo.addAttribute('normal', new THREE.BufferAttribute(
-                    new Float32Array(newNorm), 3));
-                newGeo.addAttribute('color', new THREE.BufferAttribute(
-                    new Float32Array(newColor), 3));
-                console.log(chGeo);
-                console.log(newGeo);
-
-                var particles = new THREE.Points(newGeo, particlesShMat);
-                // var particles = new THREE.Points(chGeo, particlesShMat);
-                // let sc = 4;
-                // particles.scale.set(sc, sc, sc);
-                // scene.add(particles);
-
-
-            }
-        });
-
-
-    }, onProgress, onError);
-    ////////////----------- LINES
-    // loader.load('_logo/LogoP_fills2.obj ', function (object) {
-    loader.load('_logo/LogoP_fills2.obj ', function (object) {
-        object.traverse(function (child) {
-            if (child instanceof THREE.Mesh) {
-                // child.scale.set(100,100,100);
-                let edges = new THREE.EdgesGeometry( child.geometry, 1  );
-                
-                console.log("edges");
-                console.log(edges);
-                // var geometry = new THREE.LineGeometry();
-                var geometry = new THREE.LineSegmentsGeometry();
-                let pos = [];
-                 for (let id = 0; id < edges.attributes.position.array.length; id+=3) {
-                    const x =  1.*edges.attributes.position.array[id+0];
-                    const z =  1.*edges.attributes.position.array[id+1];
-                    const y = -1.*edges.attributes.position.array[id+2];
-                    pos.push(x,y,z);
-                }
-                console.log(pos);
-				geometry.setPositions( pos );
-				// geometry.setColors( colors );
-                
-                matLine = new THREE.LineMaterial( {
-					color: 0x44aaff,
-					linewidth: .31, // in pixels
-					// vertexColors: THREE.VertexColors,
-					//resolution:  // to be set by renderer, eventually
-					dashed: false
-				} );
-
-                let line = new THREE.Line2( geometry, matLine );
-                line.material.depthTest = false;
-                line.material.opacity = 0.25;
-                line.material.transparent = true;
-                line.material.resolution = new THREE.Vector2(100,100);
-                // line.position.x = - 4;
-                let sc = 1.5;
-                line.scale.set(sc,sc,sc);
-                // scene.add(line);
-					
-            }
-        });
-
-
-    }, onProgress, onError);
-    
-    
-    // LogoParticles_decPlanar.obj 
-    //
-
     renderer = new THREE.WebGLRenderer();
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
     document.addEventListener('mousemove', onDocumentMouseMove, false);
-
-    //
 
     window.addEventListener('resize', onWindowResize, false);
 
